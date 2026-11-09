@@ -1,0 +1,38 @@
+// Client API served by the Request Router; the same messages are reused router -> coordinator.
+// See docs/LLD.md §4.2.
+syntax = "proto3";
+package dkv.wire;
+import "common.proto";
+
+service KvService {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
+message PutRequest {
+  string      key        = 1;
+  bytes       value      = 2;
+  string      request_id = 3;  // client-generated; lets a coordinator drop a duplicate retry
+  uint32      w          = 4;  // [P2] 0 = cluster default (ignored in Phase 1)
+  VectorClock context    = 5;  // [P2] clock the client last read (ignored in Phase 1)
+}
+
+message PutResponse {
+  Result  result      = 1;
+  Version version     = 2;  // value omitted
+  string  coordinator = 3;
+  uint32  acks        = 4;  // durable copies when the reply was sent (>= W on OK)
+}
+
+message GetRequest {
+  string key = 1;
+  uint32 r   = 2;  // [P2] 0 = cluster default (ignored in Phase 1)
+}
+
+message GetResponse {
+  Result           result      = 1;
+  repeated Version versions    = 2;  // Phase 1: exactly one on OK; [P2] all siblings
+  VectorClock      context     = 3;  // merged clock of everything seen
+  string           coordinator = 4;
+  uint32           responses   = 5;
+}

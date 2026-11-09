@@ -1,0 +1,80 @@
+// Storage-node services. See docs/LLD.md §4.3.
+syntax = "proto3";
+package dkv.wire;
+import "common.proto";
+import "kv.proto";
+
+service CoordinatorService {  // called by routers
+  rpc CoordPut(PutRequest) returns (PutResponse);
+  rpc CoordGet(GetRequest) returns (GetResponse);
+}
+
+service ReplicaService {  // called by peer storage nodes (and dkv_cli for faults)
+  rpc Replicate(ReplicateRequest)     returns (ReplicateResponse);
+  rpc ReadLocal(ReadLocalRequest)     returns (ReadLocalResponse);
+  rpc Heartbeat(HeartbeatMsg)         returns (HeartbeatAck);
+  rpc GetMerkleNodes(MerkleRequest)   returns (MerkleResponse);
+  rpc GetBucketDigests(BucketRequest) returns (BucketResponse);
+  rpc FetchVersions(FetchRequest)     returns (FetchResponse);
+  rpc SetFaults(FaultConfig)          returns (Result);
+}
+
+message ReplicateRequest {
+  string  key         = 1;
+  Version version     = 2;
+  string  from        = 3;
+  bool    read_repair = 4;
+}
+message ReplicateResponse {
+  Result result = 1;
+  bool   stored = 2;  // false: already had it, or an existing version dominates it
+}
+
+message ReadLocalRequest {
+  string key           = 1;
+  bool   metadata_only = 2;  // clocks/digests without values
+  string from          = 3;
+}
+message ReadLocalResponse {
+  Result           result   = 1;
+  repeated Version versions = 2;  // current (non-dominated) versions only
+}
+
+message HeartbeatMsg {
+  string          from         = 1;
+  uint64          incarnation  = 2;  // +1 on every process start (persisted in node.meta)
+  uint64          seq          = 3;
+  int64           sent_wall_ms = 4;
+  repeated string suspects     = 5;  // peers this node currently sees as SUSPECT or DOWN
+  uint64          ring_epoch   = 6;
+}
+message HeartbeatAck {
+  string from        = 1;
+  uint64 incarnation = 2;
+  // Incarnation of the *sender* as recorded by the receiver after processing this heartbeat.
+  // Lets a restarted node know the peer has seen its new incarnation (LLD §7.6).
+  uint64 seen_sender_incarnation = 3;
+}
+
+message MerkleNodeRef {
+  uint32 range_id   = 1;
+  uint32 node_index = 2;  // heap index, root = 0
+}
+message MerkleRequest  { repeated MerkleNodeRef nodes = 1; string from = 2; }
+message MerkleResponse { repeated bytes hashes = 1; }  // same order as the request; empty = not a replica
+
+message BucketRequest  { uint32 range_id = 1; repeated uint32 leaves = 2; string from = 3; }
+message KeyDigest      { string key = 1; repeated bytes version_digests = 2; }
+message BucketResponse { repeated KeyDigest keys = 1; }
+
+message FetchRequest   { repeated string keys = 1; string from = 2; }
+message KeyVersions    { string key = 1; repeated Version versions = 2; }
+message FetchResponse  { repeated KeyVersions items = 1; }
+
+message FaultRule {
+  string peer          = 1;
+  bool   drop_outgoing = 2;
+  bool   drop_incoming = 3;
+  uint32 delay_ms      = 4;
+}
+message FaultConfig { repeated FaultRule rules = 1; }  // replaces all rules; empty = clear

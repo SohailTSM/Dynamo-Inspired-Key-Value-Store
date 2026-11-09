@@ -1,0 +1,65 @@
+// Auto-Admin service. See docs/LLD.md §4.4.
+syntax = "proto3";
+package dkv.wire;
+import "common.proto";
+import "node.proto";
+
+enum NodeHealth {
+  HEALTH_UNKNOWN         = 0;
+  UP                     = 1;
+  SUSPECT                = 2;
+  UNREACHABLE_FROM_ADMIN = 3;
+  DOWN                   = 4;
+  RECOVERING             = 5;
+}
+
+service AdminService {
+  rpc Heartbeat(HeartbeatMsg)    returns (HeartbeatAck);
+  rpc Register(RegisterRequest)  returns (Result);
+  rpc ReportRepair(RepairReport) returns (Result);
+  rpc WatchHealth(Empty)         returns (stream HealthSnapshot);  // routers subscribe
+  rpc GetClusterStatus(Empty)    returns (ClusterStatus);
+}
+
+message RegisterRequest {
+  string node                  = 1;
+  uint64 incarnation           = 2;
+  int64  process_start_wall_ms = 3;
+}
+
+message RepairReport {
+  enum Phase {
+    STARTED  = 0;
+    PROGRESS = 1;
+    DONE     = 2;
+  }
+  string node                  = 1;
+  uint64 incarnation           = 2;
+  Phase  phase                 = 3;
+  int64  process_start_wall_ms = 4;  // node's own clock
+  int64  report_wall_ms        = 5;  // node's own clock; repair time = report - start (DONE)
+  uint64 ranges_total          = 6;
+  uint64 ranges_done           = 7;
+  uint64 keys_fetched          = 8;
+  uint64 bytes_fetched         = 9;
+  int64  repair_start_wall_ms  = 10;  // when the anti-entropy pass began (node clock)
+}
+
+message NodeStatus {
+  string          node                    = 1;
+  NodeHealth      health                  = 2;
+  uint64          incarnation             = 3;
+  int64           last_heartbeat_admin_ms = 4;
+  repeated string suspected_by            = 5;
+  string          address                 = 6;
+}
+
+message HealthSnapshot {
+  uint64              version = 1;
+  repeated NodeStatus nodes   = 2;
+}
+
+message ClusterStatus {
+  HealthSnapshot        health       = 1;
+  repeated RepairReport last_repairs = 2;
+}

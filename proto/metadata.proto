@@ -1,0 +1,29 @@
+// Metadata service. See docs/LLD.md §4.5.
+syntax = "proto3";
+package dkv.wire;
+
+service MetadataService {
+  rpc GetRing(GetRingRequest) returns (RingInfo);
+}
+
+message GetRingRequest { uint64 known_epoch = 1; }
+
+message NodeInfo {
+  string          id      = 1;
+  string          address = 2;
+  repeated uint64 tokens  = 3;
+}
+
+message QuorumDefaults {
+  uint32 n = 1;
+  uint32 r = 2;
+  uint32 w = 3;
+}
+
+message RingInfo {
+  uint64            epoch           = 1;
+  bool              unchanged       = 2;  // true: known_epoch is current; other fields empty
+  repeated NodeInfo nodes           = 3;
+  QuorumDefaults    quorum          = 4;
+  uint32            vnodes_per_node = 5;
+}

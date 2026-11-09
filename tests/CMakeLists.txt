@@ -1,0 +1,6 @@
+file(GLOB DKV_UNIT_TESTS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unit/*_test.cc)
+add_executable(dkv_tests test_main.cc ${DKV_UNIT_TESTS})
+dkv_target_defaults(dkv_tests)
+target_include_directories(dkv_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(dkv_tests PRIVATE dkv_common)
+add_test(NAME unit COMMAND dkv_tests)
