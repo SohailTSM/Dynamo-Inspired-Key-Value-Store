@@ -410,3 +410,32 @@ User: "Check git and git ignore things. The tools folder inside src is not getti
   - LLD §2 "Repository layout" rewritten to the as-built tree (it still showed the design-time file names, doctest, etc.).
 - Older entries in this log keep the old paths (`docs/HLD.md`, `docs/diagrams/...`) as history.
 - Nothing staged or committed.
+
+## Session 2026-11-09 (morning, cont.): first commits
+
+User asked for 6 sequential commits, planned together. Answers: no Claude co-author, no author/co-author lines at all; commit `Proposal.pdf` but not `Transcript.txt` (added to `.gitignore`); split approved; push only after review.
+
+| # | Commit | Contents | Checked before commit |
+|---|---|---|---|
+| 1 | c8dd51d Add project proposal, HLD, LLD and UML diagrams | .gitignore, Proposal.pdf, README (original part), docs/ (LLD without §16), secrets template | – |
+| 2 | 63b5e00 Set up CMake build, protobuf APIs and common utilities | CMake, proto/, src/common, test harness, local config, RCE ssh/sync/m0/build scripts | build 0 warnings, 7/7 unit tests |
+| 3 | 7886ca4 Add versioning, consistent-hash ring, log-structured storage and Merkle trees | src/version, ring, storage, merkle + tests | 29/29 |
+| 4 | cb809f8 Add storage node: quorum coordinator, replication, failure detection and repair | src/rpc, src/node, signals | 29/29, dkv_node builds |
+| 5 | 873227f Add metadata service, auto-admin, request router, client library and tools | metadata, admin, router, client, tools, local cluster + integration tests | 30/30 unit, 7/7 integration |
+| 6 | c04deff Add RCE experiment pipeline, analysis scripts and kill/restart results | experiment.sbatch, make_config, analysis, results/, README final, LLD §16, this log | – (same code as 5) |
+
+Commits 2–5 used trimmed `src/CMakeLists.txt` / `tests/CMakeLists.txt` (only the modules committed so far) and `common_test.cc` without the workload test until commit 5. Each snapshot was built from the index in a scratch dir. Not pushed yet.
+
+Post-commit check (user: "Is everything working as expected after the commits?"), on a fresh `git archive HEAD` copy:
+- Clean build, 0 warnings, all 7 binaries; unit tests 30/30; integration tests 7/7.
+- Local experiment (2000 keys, 300 ops/s, victim B): 100% availability, detection 3077 ms after last heartbeat, repair 617 ms (946 keys), 0 lost.
+- 59 relative links in all committed .md files: 0 broken. No leftover processes.
+- RCE build not run: `rce.iiit.ac.in` did not resolve from this network (other sites resolve fine; probably off campus network / VPN).
+- Later, on campus network: sync to RCE succeeded, build job 120147 (16 CPUs) sat PENDING (Priority) because the cluster was busy; the user stopped the wait and asked to cancel it. Cancelled before it started; no jobs of ours left in the queue. RCE build still unchecked.
+
+## Session 2026-11-09 (cont.): pushed to GitHub
+
+- User: "Push to github. We will try to run on RCE later when we can use 6-7 nodes."
+- A single `git push` failed with HTTP 408 (upload timeout) on the campus network; pushing the 6 commits one at a time worked (2–4 s each). `origin/main` = c04deff; `main` tracks it.
+- Next RCE work (RCE build check, experiment rerun) waits until 6–7 nodes are usable.
+- User asked to remove the README's original content (written before the project started). Removed the intro that described both course projects merged, plus the Requirements, Experiments to run, and Resume checklist sections. Replaced them with a short accurate intro (architecture, key techniques, headline results). The Status/Build/Run/Experiment/Processes sections are unchanged. Not committed.
