@@ -2,5 +2,5 @@ file(GLOB DKV_UNIT_TESTS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unit/*_te
 add_executable(dkv_tests test_main.cc ${DKV_UNIT_TESTS})
 dkv_target_defaults(dkv_tests)
 target_include_directories(dkv_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(dkv_tests PRIVATE dkv_common dkv_version dkv_ring dkv_storage dkv_merkle dkv_nodelib)
+target_link_libraries(dkv_tests PRIVATE dkv_common dkv_version dkv_ring dkv_storage dkv_merkle dkv_nodelib dkv_adminlib dkv_routerlib dkv_client dkv_workload)
 add_test(NAME unit COMMAND dkv_tests)

@@ -99,3 +99,17 @@ TEST_CASE("thread_pool: runs all tasks") {
   }
   CHECK_EQ(n.load(), 1000);
 }
+
+#include "tools/workload.h"
+TEST_CASE("workload: deterministic values and seq parsing") {
+  std::string v = WorkloadValue("k12", 7, 256);
+  CHECK_EQ(v.size(), size_t(256));
+  CHECK(v == WorkloadValue("k12", 7, 256));
+  uint64_t s = 0;
+  CHECK(ParseWorkloadSeq("k12", v, &s));
+  CHECK_EQ(s, uint64_t(7));
+  CHECK(!ParseWorkloadSeq("k1", v, &s));       // different key with same prefix
+  std::string tiny = WorkloadValue("key", 123456, 4);  // header longer than size: kept whole
+  CHECK(ParseWorkloadSeq("key", tiny, &s));
+  CHECK_EQ(s, uint64_t(123456));
+}
