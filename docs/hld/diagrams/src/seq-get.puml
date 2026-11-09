@@ -1,0 +1,44 @@
+@startuml seq-get
+!include ../../../plantuml-style.iuml
+title Sequence — GET(key) with N = 3, R = 2 and read repair
+autonumber
+
+actor Client
+participant "Request Router" as R
+participant "Coordinator\nNode A" as A
+participant "Replica\nNode B" as B
+participant "Replica\nNode C" as C
+
+Client -> R : Get(k)
+R -> R : coord = first UP node in preferenceList(k)
+R -> A : CoordGet(k)
+activate A
+A -> A : read local current versions (response 1 of R)
+
+par query the other replicas
+  A -> B : ReadLocal(k)
+  B --> A : versions_B (response 2 of R)
+else
+  A -> C : ReadLocal(k)
+  C --> A : versions_C (may arrive late)
+end
+
+A -> A : resolve:\n1. drop dominated versions (vector clocks)\n2. if concurrent: max timestamp,\n   tie -> lowest coordinator id\n[P2: return all siblings + context]
+A --> R : OK(value, version)
+deactivate A
+R --> Client : value
+
+opt a responder returned an older version or nothing
+  A ->> B : Replicate(k, winning version)\n(async read repair)
+end
+
+== Other outcomes ==
+
+alt key absent on all R responders
+  A --> R : NOT_FOUND
+  R --> Client : NOT_FOUND
+else fewer than R responses before timeout
+  A --> R : QUORUM_NOT_REACHED
+  R --> Client : ERROR(QUORUM_NOT_REACHED)
+end
+@enduml

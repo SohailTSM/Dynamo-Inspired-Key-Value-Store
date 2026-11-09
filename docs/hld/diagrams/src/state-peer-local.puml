@@ -1,0 +1,15 @@
+@startuml state-peer-local
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title State Machine — Peer health in a storage node's local FailureDetector
+
+[*] --> UP : configured member\n(assumed up at start)
+UP --> SUSPECT : 1 missed interval (1 s)
+SUSPECT --> UP : heartbeat received
+SUSPECT --> DOWN : 3 missed intervals (3 s)
+DOWN --> UP : heartbeat received\n(new incarnation => peer restarted)
+
+UP : coordinator contacts it
+SUSPECT : coordinator contacts it,\nreported to Auto-Admin as suspect
+DOWN : coordinator skips it\n(no waiting for its ack)
+@enduml

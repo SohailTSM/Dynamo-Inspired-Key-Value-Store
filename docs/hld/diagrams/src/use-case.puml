@@ -1,0 +1,35 @@
+@startuml use-case
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Use Case Diagram — Dynamo-Inspired KV Store (Phase 1)
+left to right direction
+
+actor "Client\n(application / kvcli)" as Client
+actor "Load Generator" as LG
+actor "Experimenter" as Exp
+LG -|> Client
+
+rectangle "Dynamo-Inspired KV Store" {
+  usecase "PUT(key, value)" as UC1
+  usecase "GET(key)" as UC2
+  usecase "Verify acknowledged writes" as UC6
+  usecase "View cluster status\n(health, repairs)" as UC3
+  usecase "Kill / restart a storage node" as UC4
+  usecase "Run kill-restart experiment" as UC5
+  usecase "Collect metrics\n(availability, detection time,\nrepair time)" as UC7
+  usecase "Inject network faults\n[Phase 2 partitions]" as UC8
+}
+
+Client --> UC1
+Client --> UC2
+LG --> UC6
+Exp --> UC3
+Exp --> UC4
+Exp --> UC5
+Exp --> UC8
+
+UC5 ..> UC4 : <<include>>
+UC5 ..> UC6 : <<include>>
+UC5 ..> UC7 : <<include>>
+UC6 ..> UC2 : <<include>>
+@enduml

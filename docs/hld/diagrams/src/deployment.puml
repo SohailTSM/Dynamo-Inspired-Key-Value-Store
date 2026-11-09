@@ -1,0 +1,56 @@
+@startuml deployment
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Deployment Diagram — RCE (8 machines)
+top to bottom direction
+' Smetana lays out siblings in reverse declaration order, so machines are declared m5..m1 and m8..m6.
+
+rectangle "Storage tier (local disks, not NFS)" as ST {
+  node "m5" as m5 {
+    artifact "storage_node E" as sE
+    database "local disk E" as dE
+  }
+  node "m4" as m4 {
+    artifact "storage_node D" as sD
+    database "local disk D" as dD
+  }
+  node "m3" as m3 {
+    artifact "storage_node C" as sC
+    database "local disk C" as dC
+  }
+  node "m2" as m2 {
+    artifact "storage_node B" as sB
+    database "local disk B" as dB
+  }
+  node "m1" as m1 {
+    artifact "storage_node A" as sA
+    database "local disk A" as dA
+  }
+}
+
+rectangle "Routing, control and client tier" as CT {
+  node "m8" as m8 {
+    artifact "loadgen / kvcli" as lg
+    artifact "experiment driver\n(bash + ssh)" as ed
+    artifact "analysis\n(Python + matplotlib)" as an
+  }
+  node "m7" as m7 {
+    artifact "metadata_service" as ms
+    artifact "auto_admin" as aa
+    database "cluster.json" as cj
+  }
+  node "m6" as m6 {
+    artifact "router #1" as r1
+    artifact "router #2 (optional)" as r2
+  }
+}
+
+sA -- dA
+sB -- dB
+sC -- dC
+sD -- dD
+sE -- dE
+ms -- cj
+
+m3 -down- m7 : RCE LAN\ngRPC over TCP\n(clocks NTP-synced)
+@enduml

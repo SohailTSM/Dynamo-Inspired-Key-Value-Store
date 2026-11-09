@@ -1,0 +1,103 @@
+@startuml class-storage
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Class Diagram — Storage Engine and Merkle Trees (src/storage, src/merkle)
+hide empty members
+
+package "dkv::storage" {
+  interface StorageEngine {
+    + open() : Status
+    + put_version(key, v : Version) : StatusOr<bool>
+    + current_versions(key) : vector<VersionMeta>
+    + read_value(meta : VersionMeta) : StatusOr<Version>
+    + for_each_key_in_range(range_id, visitor)
+    + stats() : StorageStats
+  }
+
+  class LogStorageEngine {
+    - log_ : VersionLog
+    - index_ : Index
+    - merkle_ : MerkleForest&
+  }
+
+  class VersionLog {
+    - segments_ : vector<unique_ptr<Segment>>
+    - queue_ : deque<Pending>
+    - committer_ : thread
+    + open(dir, segment_bytes, replay) : Status
+    + append(rec : LogRecord) : future<StatusOr<Location>>
+    + read(loc : Location) : StatusOr<LogRecord>
+    + start()
+    + stop()
+    - commit_loop()
+  }
+
+  class Segment {
+    - fd_ : int
+    - id_ : uint32
+    - size_ : uint64
+    + {static} create(dir, id)
+    + {static} open(path)
+    + append_batch(bytes) : StatusOr<uint64>
+    + sync() : Status
+    + pread(off, len) : StatusOr<string>
+  }
+
+  class RecordCodec <<utility>> {
+    + {static} frame(rec : LogRecord) : string
+    + {static} parse(buf, out : LogRecord) : ParseResult
+  }
+
+  class Location <<struct>> {
+    + segment_id : uint32
+    + offset : uint64
+    + length : uint32
+  }
+
+  class Index {
+    - shards_ : array<Shard, 64>
+    + apply(key, v : VersionMeta) : bool
+    + current(key) : vector<VersionMeta>
+    + has_equal_or_dominating(key, clock) : bool
+    + key_count() : size_t
+  }
+
+  class KeyEntry <<struct>> {
+    + current : vector<VersionMeta>
+    + versions_on_disk : uint32
+  }
+}
+
+package "dkv::merkle" {
+  class MerkleForest {
+    - trees_ : unordered_map<uint32, unique_ptr<MerkleTree>>
+    + rebuild(ring, self, engine)
+    + on_current_changed(key, current)
+    + tree(range_id) : MerkleTree*
+  }
+
+  class MerkleTree {
+    {static} kFanout = 16
+    {static} kLeaves = 256
+    - leaves_ : array<map<string, vector<Digest160>>, 256>
+    - hashes_ : array<Digest160, 273>
+    - dirty_ : bitset<273>
+    + upsert(key, digests)
+    + node_hash(heap_index) : Digest160
+    + leaf_contents(leaf) : vector<KeyDigestEntry>
+    + {static} leaf_of(key) : uint32
+  }
+}
+
+StorageEngine <|.. LogStorageEngine
+LogStorageEngine *-- VersionLog
+LogStorageEngine *-- Index
+LogStorageEngine --> MerkleForest : notifies
+VersionLog *-- "1..*" Segment
+VersionLog ..> RecordCodec : uses
+VersionLog ..> Location : returns
+Index *-- "0..*" KeyEntry
+KeyEntry *-- "1..*" VersionMeta
+VersionMeta *-- Location
+MerkleForest *-- "0..*" MerkleTree
+@enduml

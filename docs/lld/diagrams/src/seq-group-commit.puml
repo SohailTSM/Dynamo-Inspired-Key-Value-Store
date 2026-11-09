@@ -1,0 +1,48 @@
+@startuml seq-group-commit
+!include ../../../plantuml-style.iuml
+title Sequence — Group commit in VersionLog (fsync before ack)
+
+participant "Writer 1\n(Coordinator / Replicate)" as W1
+participant "Writer 2" as W2
+participant "Writer 3" as W3
+participant "VersionLog\ncommit queue" as Q
+participant "Committer\nthread" as C
+participant "Active\nSegment" as S
+participant "Index +\nMerkleForest" as IX
+
+W1 -> Q : append(rec1) -> future1
+Q -> C : notify
+activate C
+C -> Q : take all queued [rec1]
+C -> S : write(frame(rec1))
+C -> S : fdatasync()
+note right of S : W2 and W3 arrive\nwhile this fsync runs
+W2 -> Q : append(rec2) -> future2
+W3 -> Q : append(rec3) -> future3
+S --> C : synced
+C --> W1 : future1 = Location
+deactivate C
+W1 -> IX : apply(key1, meta)
+
+activate C
+C -> Q : take all queued [rec2, rec3]
+C -> S : write(frame(rec2) + frame(rec3))
+C -> S : fdatasync()
+note right of S : one fsync covers\nboth records
+S --> C : synced
+C --> W2 : future2 = Location
+C --> W3 : future3 = Location
+deactivate C
+W2 -> IX : apply(key2, meta)
+W3 -> IX : apply(key3, meta)
+
+opt active segment >= segmentBytes
+  C -> S : seal (already synced)
+  C -> C : create next segment,\nwrite header, fsync file + directory
+end
+
+note over W1, IX
+  A writer acks (to the coordinator or the client) only after its future resolves,
+  i.e. after fdatasync returned. There is no artificial batching delay.
+end note
+@enduml

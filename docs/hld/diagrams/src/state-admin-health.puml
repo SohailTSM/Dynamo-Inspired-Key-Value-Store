@@ -1,0 +1,26 @@
+@startuml state-admin-health
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title State Machine — Node health in the Auto-Admin (cluster view)
+
+[*] --> UNKNOWN
+UNKNOWN --> UP : first heartbeat /\nRegister
+
+UP --> SUSPECT : 1 missed interval
+SUSPECT --> UP : heartbeat received
+SUSPECT --> DOWN : 3 missed intervals\nAND majority of UP peers suspect
+SUSPECT --> UNREACHABLE_FROM_ADMIN : 3 missed intervals\nBUT peers still hear it
+
+UNREACHABLE_FROM_ADMIN --> UP : heartbeat received
+UNREACHABLE_FROM_ADMIN --> DOWN : majority of UP peers\nnow suspect it
+
+DOWN --> RECOVERING : Register / heartbeat with\nnew incarnation\n/ record recovery, start repair timer
+RECOVERING --> UP : RepairReport(DONE)\n/ record repair time
+RECOVERING --> DOWN : 3 missed intervals\nAND peers confirm
+
+UP : routable
+SUSPECT : routable
+UNREACHABLE_FROM_ADMIN : routable
+RECOVERING : routable (accepts writes,\nserves reads)
+DOWN : not routable
+@enduml

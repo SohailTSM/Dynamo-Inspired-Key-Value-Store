@@ -1,0 +1,10 @@
+' Shared look for every diagram. Included with: !include _style.iuml
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontSize 13
+skinparam titleFontSize 16
+skinparam ArrowColor #37474F
+skinparam componentStyle uml2
+skinparam sequenceMessageAlign left
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #C9A227

@@ -1,0 +1,50 @@
+@startuml seq-repair
+!include ../../../plantuml-style.iuml
+title Sequence — Node restart and Merkle-tree anti-entropy repair
+
+participant "Experiment\ndriver" as Exp
+participant "Node C\n(restarted)" as C
+participant "Node A\n(healthy replica)" as A
+participant "Auto-Admin" as Admin
+participant "Request Router" as R
+
+Exp -> C : start process (t_start)
+activate C
+C -> C : replay log segments\nverify CRCs, truncate torn tail\nrebuild Index + Merkle trees
+C -> Admin : Register(C, incarnation + 1, t_start)
+C -> A : Heartbeat (resumes every 1 s)
+Admin -> Admin : declare C RECOVERING\nrecord recovery
+Admin -> R : HealthUpdate(C = RECOVERING, routable)
+
+C -> C : wait until peers have acked a heartbeat\nfrom this incarnation (max 10 s), + coordTimeoutMs
+note right of C
+  From here on every new write includes C,
+  so only writes made before this point can be missing.
+end note
+
+loop for each healthy peer (A shown) sharing ranges with C
+  C -> A : GetMerkleNodes([roots of all shared ranges])
+  A --> C : root hashes (one batched call)
+  loop descend only into differing subtrees (batched across ranges)
+    C -> A : GetMerkleNodes([children of differing nodes])
+    A --> C : child hashes
+  end
+  C -> A : GetBucketDigests(r, differing leaves)
+  A --> C : [(key, version digests)]
+  C -> C : keys with digests C lacks
+  C -> A : FetchVersions(keys) (batches of 256)
+  A --> C : versions
+  C -> C : put_version each (append + fsync;\nskips equal or dominated)
+end
+
+C -> Admin : RepairReport(DONE, keys, bytes, t_done)
+deactivate C
+Admin -> Admin : C = UP\nrepair time = t_done - t_start
+Admin -> R : HealthUpdate(C = UP)
+
+note over C, A
+  During repair C already accepts replicated writes and serves reads.
+  Reads stay correct: R + W > N, so every R = 2 quorum includes
+  at least one up-to-date replica, and the resolver picks the newest.
+end note
+@enduml

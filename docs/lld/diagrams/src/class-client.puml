@@ -1,0 +1,72 @@
+@startuml class-client
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Class Diagram — Client Library, Load Generator, Verifier
+hide empty members
+
+class KvClient {
+  - routers_ : vector<unique_ptr<KvService::Stub>>
+  + put(key, value) : PutResult
+  + get(key) : GetResult
+  - new_request_id() : string
+}
+
+class PutResult <<struct>> {
+  + code : Code
+  + version_digest : string
+  + coordinator : string
+  + latency_us : int64
+}
+
+class GetResult <<struct>> {
+  + code : Code
+  + value : string
+  + version_digest : string
+  + latency_us : int64
+}
+
+class WorkloadSpec <<struct>> {
+  + rate : uint32
+  + threads : uint32
+  + keys : uint64
+  + duration_s : uint32
+  + put_ratio : double
+  + value_bytes : uint32
+}
+
+class LoadGenerator {
+  + run(spec) : RunSummary
+  - worker(id)
+}
+
+class RequestLog {
+  + record(op, key, result, t_start)
+  + flush()
+}
+
+class AckRecorder {
+  + acked(key, seq, value_sha1, digest)
+  + maybe(key, seq, value_sha1)
+}
+
+class Verifier {
+  + verify(ack_file) : VerifySummary
+}
+
+class VerifySummary <<struct>> {
+  + acked_keys : uint64
+  + ok : uint64
+  + ok_later_maybe : uint64
+  + lost : uint64
+}
+
+LoadGenerator --> KvClient
+LoadGenerator --> WorkloadSpec
+LoadGenerator *-- "1 per worker" RequestLog
+LoadGenerator *-- AckRecorder
+Verifier --> KvClient
+Verifier ..> AckRecorder : reads ack log
+Verifier ..> VerifySummary : produces
+KvClient ..> PutResult
+KvClient ..> GetResult
+@enduml

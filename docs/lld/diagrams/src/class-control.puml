@@ -1,0 +1,98 @@
+@startuml class-control
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Class Diagram — Router, Metadata Service, Auto-Admin
+hide empty members
+
+package "dkv::router (dkv_router)" {
+  class RouterServiceImpl {
+    + Put(ctx, req, resp) : grpc::Status
+    + Get(ctx, req, resp) : grpc::Status
+    - forward(req, attempt) : Result
+  }
+  class CoordinatorSelector {
+    + select(key, exclude) : optional<string>
+  }
+  class HealthView {
+    - snapshot_ : HealthSnapshot
+    - local_down_until_ : map<string, int64>
+    + is_down(node) : bool
+    + mark_local_down(node, ms)
+    + start()
+    + stop()
+    - watch_loop()
+  }
+  class CoordinatorStubs {
+    - stubs_ : map<string, unique_ptr<CoordinatorService::Stub>>
+    + get(node) : CoordinatorService::Stub&
+  }
+  class "RingCache" as RRC
+}
+
+package "dkv::metadata (dkv_metadata)" {
+  class MetadataServiceImpl {
+    + GetRing(ctx, req, resp) : grpc::Status
+  }
+  class ConfigStore {
+    - ring_ : RingInfo
+    + load(config) : Status
+    + persist() : Status
+    + ring() : RingInfo
+  }
+}
+
+package "dkv::admin (dkv_admin)" {
+  class AdminServiceImpl {
+    + Heartbeat(...)
+    + Register(...)
+    + ReportRepair(...)
+    + WatchHealth(ctx, req, writer)
+    + GetClusterStatus(...)
+  }
+  class HealthTracker {
+    - nodes_ : map<string, NodeRecord>
+    - snapshot_version_ : uint64
+    + on_heartbeat(msg)
+    + on_register(req)
+    + on_repair_done(node, incarnation)
+    + snapshot() : HealthSnapshot
+    + wait_for_change(after_version, deadline)
+    - tick()
+  }
+  class NodeRecord <<struct>> {
+    + health : NodeHealth
+    + incarnation : uint64
+    + last_hb_mono_ms : int64
+    + suspects_reported : map<string, set<string>>
+  }
+  class RepairTracker {
+    - reports_ : map<string, RepairReport>
+    + on_report(report)
+    + repair_time_ms(node) : optional<int64>
+  }
+  enum NodeHealth {
+    UNKNOWN
+    UP
+    SUSPECT
+    UNREACHABLE_FROM_ADMIN
+    DOWN
+    RECOVERING
+  }
+}
+
+RouterServiceImpl --> CoordinatorSelector
+RouterServiceImpl --> CoordinatorStubs
+RouterServiceImpl --> HealthView : mark_local_down
+CoordinatorSelector --> RRC
+CoordinatorSelector --> HealthView
+HealthView ..> AdminServiceImpl : WatchHealth stream
+RRC ..> MetadataServiceImpl : GetRing
+
+MetadataServiceImpl --> ConfigStore
+
+AdminServiceImpl --> HealthTracker
+AdminServiceImpl --> RepairTracker
+RepairTracker --> HealthTracker : RECOVERING -> UP
+HealthTracker *-- "0..*" NodeRecord
+NodeRecord --> NodeHealth
+@enduml

@@ -1,0 +1,42 @@
+@startuml seq-failure-detection
+!include ../../../plantuml-style.iuml
+title Sequence — Heartbeat failure detection with peer confirmation
+
+participant "Experiment\ndriver" as Exp
+participant "Node C" as C
+participant "Node A" as A
+participant "Node B" as B
+participant "Auto-Admin" as Admin
+participant "Request Router" as R
+
+loop every 1 s (every node, shown for C)
+  C -> A : Heartbeat(C, incarnation, seq)
+  C -> B : Heartbeat(C, incarnation, seq)
+  C -> Admin : Heartbeat(C, incarnation, seq, suspects=[])
+end
+
+Exp -> C : kill -9  (logs t_kill)
+destroy C
+
+... 3 heartbeat intervals pass (3 s) ...
+
+A -> A : C: 1 miss -> SUSPECT\n3 misses -> DOWN (local view)
+B -> B : C: 1 miss -> SUSPECT\n3 misses -> DOWN (local view)
+A -> Admin : Heartbeat(A, suspects=[C])
+B -> Admin : Heartbeat(B, suspects=[C])
+
+Admin -> Admin : missed 3 heartbeats from C\nAND majority of UP peers suspect C\n-> declare C DOWN (t_detect)
+Admin -> R : HealthUpdate(C = DOWN)
+R -> R : skip C when picking coordinators
+
+note over Admin
+  detection time = t_detect - t_kill
+  (clocks NTP-synced)
+end note
+
+== Gray failure (admin cannot hear C, peers can) ==
+
+alt peers still receive C's heartbeats
+  Admin -> Admin : mark C UNREACHABLE_FROM_ADMIN\n(not DOWN: no false failover)
+end
+@enduml

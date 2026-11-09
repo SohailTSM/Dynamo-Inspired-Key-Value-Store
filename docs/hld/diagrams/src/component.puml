@@ -1,0 +1,57 @@
+@startuml component
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Component Diagram — Service Architecture (Phase 1)
+
+package "Clients" {
+  component "kvcli" as CLI
+  component "loadgen\n(workload, ack recorder,\nverifier)" as LG
+}
+
+package "Request routing tier" {
+  component "Request Router\n(stateless, x1-2)\n--\nring cache\nhealth view\ncoordinator selection\nfailover / timeouts" as Router
+}
+
+package "Control plane" {
+  component "Metadata Service\n--\nmembership, vnode tokens,\nN/R/W defaults, ring epoch" as Meta
+  component "Auto-Admin Service\n--\ncluster health view,\nDOWN/UP decisions,\nrepair tracking, metrics" as Admin
+  database "cluster.json\n(write-temp + fsync + rename)" as MetaDB
+}
+
+package "Storage tier (4-6 processes)" {
+  component "Storage Node A" as A
+  component "Storage Node B" as B
+  component "Storage Node C" as C
+  database "version log A" as LA
+  database "version log B" as LB
+  database "version log C" as LC
+}
+
+CLI --> Router : Put / Get
+LG --> Router : Put / Get
+
+Router --> A : CoordPut / CoordGet
+Router ..> Meta : GetRing\n(poll by epoch)
+Router ..> Admin : WatchHealth\n(stream)
+
+A <--> B : Replicate, ReadLocal,\nMerkle*, Fetch, Heartbeat
+B <--> C : peer RPCs
+A <--> C : peer RPCs
+
+A --> Admin : Heartbeat + suspects,\nRegister, RepairReport
+B --> Admin
+C --> Admin
+A ..> Meta : GetRing
+Admin ..> Meta : GetRing
+
+Meta -- MetaDB
+A -- LA
+B -- LB
+C -- LC
+
+note right of Router
+  Any storage node in the key's
+  preference list can coordinate.
+  Only 3 of the 4-6 nodes are drawn.
+end note
+@enduml

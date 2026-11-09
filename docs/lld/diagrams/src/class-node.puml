@@ -1,0 +1,156 @@
+@startuml class-node
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Class Diagram — Storage Node Process (src/node, src/rpc)
+hide empty members
+
+class StorageNode {
+  - config_ : ClusterConfig
+  - id_ : string
+  - incarnation_ : uint64
+  + run() : int
+  + stop()
+  - startup_sequence()
+}
+
+package "gRPC services" {
+  class CoordinatorServiceImpl {
+    + CoordPut(ctx, req, resp) : grpc::Status
+    + CoordGet(ctx, req, resp) : grpc::Status
+  }
+  class ReplicaServiceImpl {
+    + Replicate(...)
+    + ReadLocal(...)
+    + Heartbeat(...)
+    + GetMerkleNodes(...)
+    + GetBucketDigests(...)
+    + FetchVersions(...)
+    + SetFaults(...)
+  }
+}
+
+class Coordinator {
+  + put(req) : PutResponse
+  + get(req) : GetResponse
+  - stamp(key, ctx, deadline) : StatusOr<Version>
+  - read_repair(key, winner, replies)
+  - effective_w() : uint32
+  - effective_r() : uint32
+}
+
+class QuorumTracker {
+  - need_ : uint32
+  - acks_ : uint32
+  - replies_ : vector<Reply>
+  + ack(from, reply)
+  + wait(need, deadline) : bool
+}
+
+class KeyLocks {
+  - stripes_ : array<mutex, 1024>
+  + for_key(key) : mutex&
+}
+
+class RequestDeduper {
+  - lru_ : LruCache<string, PutResponse>
+  + get(request_id) : optional<PutResponse>
+  + put(request_id, resp)
+}
+
+class FailureDetector {
+  - peers_ : map<string, PeerState>
+  + on_heartbeat(msg)
+  + is_down(peer) : bool
+  + suspects() : vector<string>
+  + peer_has_acked_incarnation(peer) : bool
+  + start()
+  + stop()
+}
+
+class PeerState <<struct>> {
+  + last_seen_mono_ms : int64
+  + incarnation : uint64
+  + health : PeerHealth
+}
+
+class AntiEntropy {
+  + run_startup_pass() : RepairStats
+  + start_periodic()
+  + stop()
+  - sync_with(peer, ranges) : RepairStats
+}
+
+class AdminReporter {
+  + register_node()
+  + report_repair(report)
+  + start()
+  + stop()
+}
+
+package "dkv::rpc" {
+  class PeerClientPool {
+    - stubs_ : map<string, unique_ptr<ReplicaService::Stub>>
+    - pool_ : ThreadPool&
+    + replicate_async(peer, req, deadline, cb)
+    + read_local_async(peer, req, deadline, cb)
+    + heartbeat_async(peer, msg)
+    + merkle_nodes(peer, req, deadline)
+    + bucket_digests(peer, req, deadline)
+    + fetch_versions(peer, req, deadline)
+  }
+  class FaultInjector {
+    - rules_ : map<string, FaultRule>
+    + set(config)
+    + allow_outgoing(peer) : bool
+    + allow_incoming(peer) : bool
+    + delay_ms(peer) : uint32
+  }
+  class ThreadPool {
+    + submit(task)
+  }
+}
+
+class "StorageEngine" as SE <<interface>>
+class "MerkleForest" as MF
+class "RingCache" as RC
+class "VersionResolver" as VR
+class EventLog
+
+
+note top of StorageNode
+  Composition root: owns exactly one instance of every
+  other class in this diagram (ownership edges omitted
+  for readability) and wires them in startup_sequence().
+end note
+
+StorageNode ..> CoordinatorServiceImpl : registers
+StorageNode ..> ReplicaServiceImpl : registers
+
+CoordinatorServiceImpl --> Coordinator
+ReplicaServiceImpl --> SE
+ReplicaServiceImpl --> MF
+ReplicaServiceImpl --> FailureDetector
+ReplicaServiceImpl --> FaultInjector
+
+Coordinator --> RC
+Coordinator --> FailureDetector
+Coordinator --> SE
+Coordinator --> PeerClientPool
+Coordinator --> VR
+Coordinator *-- KeyLocks
+Coordinator *-- RequestDeduper
+Coordinator ..> QuorumTracker : creates per request
+
+FailureDetector *-- "0..*" PeerState
+FailureDetector --> PeerClientPool
+FailureDetector --> AdminReporter : suspects
+
+AntiEntropy --> MF
+AntiEntropy --> SE
+AntiEntropy --> PeerClientPool
+AntiEntropy --> FailureDetector
+AntiEntropy --> AdminReporter
+
+PeerClientPool --> ThreadPool
+PeerClientPool --> FaultInjector
+@enduml

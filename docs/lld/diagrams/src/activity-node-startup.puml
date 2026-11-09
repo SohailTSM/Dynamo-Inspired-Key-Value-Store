@@ -1,0 +1,60 @@
+@startuml activity-node-startup
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Activity Diagram — Storage node startup and recovery
+
+start
+:Parse flags + cluster config;
+:incarnation += 1 in node.meta
+(write temp, fsync, rename);
+:Record process_start (wall + monotonic);
+partition "Recovery (VersionLog::open)" {
+  repeat :Read next record of next segment;
+    if (header/payload complete and CRC ok?) then (yes)
+      :Index.apply(key, version);
+    else (no)
+      if (in last segment?) then (yes)
+        :Truncate torn tail
+        (ftruncate + fsync), log it;
+        break
+      else (no)
+        :Corrupt sealed segment;
+        stop
+      endif
+    endif
+  repeat while (more records?) is (yes)
+  ->no;
+}
+:MerkleForest.rebuild(ring, self, engine);
+if (Metadata Service reachable?) then (yes)
+  :RingCache from GetRing;
+else (no)
+  :RingCache from config
+  (same deterministic ring);
+endif
+:Start gRPC server
+(Coordinator + Replica services);
+:Start FailureDetector heartbeats;
+fork
+  :AdminReporter: Register + heartbeats
+  (background retries, never blocks);
+fork again
+  :Serve replicated writes and reads
+  immediately (R + W > N);
+fork again
+  partition "AntiEntropy startup pass" {
+    :Wait until peers ack a heartbeat
+    from this incarnation (max 10 s),
+    then wait coordTimeoutMs;
+    :For each healthy peer:
+    compare Merkle roots -> children -> leaves;
+    :GetBucketDigests for differing leaves;
+    :FetchVersions for missing / older keys
+    -> put_version (durable);
+  }
+  :RepairReport(DONE) with start/done
+  on this node's clock;
+  :Start periodic anti-entropy loop;
+end fork
+stop
+@enduml

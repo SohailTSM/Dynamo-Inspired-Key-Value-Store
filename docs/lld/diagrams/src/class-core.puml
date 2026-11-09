@@ -1,0 +1,86 @@
+@startuml class-core
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Class Diagram — Versioning and Ring (src/version, src/ring)
+hide empty members
+
+package "dkv::version" {
+  enum Order {
+    kBefore
+    kAfter
+    kEqual
+    kConcurrent
+  }
+
+  class VectorClock {
+    - entries_ : map<string, uint64>
+    + increment(node : string)
+    + get(node : string) : uint64
+    + merge(other : VectorClock)
+    + compare(other : VectorClock) : Order
+    + descends_from(other : VectorClock) : bool
+    + canonical_bytes() : string
+  }
+
+  class VersionMeta <<struct>> {
+    + clock : VectorClock
+    + timestamp_ms : int64
+    + coordinator : string
+    + digest : Digest160
+    + loc : Location
+  }
+
+  enum ResolutionPolicy {
+    kLwwOnConcurrent
+    kReturnSiblings  [P2]
+  }
+
+  class VersionResolver {
+    - policy_ : ResolutionPolicy
+    + {static} prune(v : vector<VersionMeta>) : vector<VersionMeta>
+    + resolve(v : vector<VersionMeta>) : vector<VersionMeta>
+    + {static} wins_tie(a, b : VersionMeta) : bool
+  }
+}
+
+package "dkv::ring" {
+  class RingNode <<struct>> {
+    + id : string
+    + address : string
+  }
+
+  class HashRing {
+    - tokens_ : vector<pair<uint64, uint32>>
+    - range_replicas_ : vector<vector<string>>
+    - epoch_ : uint64
+    + {static} build(nodes, vnodes, epoch) : HashRing
+    + {static} token(s : string_view) : uint64
+    + preference_list(key, n) : vector<string>
+    + range_of(key) : uint32
+    + replicas_of_range(r : uint32) : vector<string>
+    + ranges_replicated_by(node) : vector<uint32>
+    + range_count() : uint32
+  }
+
+  class RingCache {
+    - current_ : shared_ptr<const HashRing>
+    - fallback_ : ClusterConfig
+    + current() : shared_ptr<const HashRing>
+    + refresh_now()
+    + start()
+    + stop()
+  }
+
+  interface MetadataClient {
+    + get_ring(known_epoch) : StatusOr<RingInfo>
+  }
+}
+
+VectorClock ..> Order : returns
+VersionMeta *-- VectorClock
+VersionResolver --> ResolutionPolicy
+VersionResolver ..> VersionMeta : resolves
+HashRing o-- "4..6" RingNode
+RingCache --> HashRing : publishes
+RingCache --> MetadataClient : polls GetRing
+@enduml

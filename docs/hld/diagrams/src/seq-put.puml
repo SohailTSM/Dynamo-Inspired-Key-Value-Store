@@ -1,0 +1,61 @@
+@startuml seq-put
+!include ../../../plantuml-style.iuml
+title Sequence — PUT(key, value) with N = 3, W = 2
+autonumber
+
+actor Client
+participant "Request Router" as R
+participant "Coordinator\nNode A (1st UP in pref list)" as A
+participant "Replica\nNode B" as B
+participant "Replica\nNode C" as C
+
+Client -> R : Put(k, v)
+R -> R : pref = ring.preferenceList(k) = [A, B, C]\ncoord = first UP node in pref
+R -> A : CoordPut(k, v, req_id)
+activate A
+A -> A : dedupe req_id\nlock key k (striped lock)
+group stamp: READ_BEFORE_WRITE
+  A -> B : ReadLocal(k, metadata_only)\n(R-1 = 1 peer needed)
+  B --> A : current clocks of k
+  A -> A : clock = merge(local clocks, B's clocks)\nclock[A]++ ; ts = now()
+  note right of A
+    R + W > N: the clocks read always include
+    the last acknowledged version, so the new
+    version descends from it (no wall-clock LWW)
+  end note
+end
+A -> A : append + fsync locally (group commit)\n(ack 1 of W); unlock key k
+
+par replicate to the other N-1 replicas
+  A -> B : Replicate(k, version)
+  activate B
+  B -> B : verify CRC, append + fsync
+  B --> A : ACK (ack 2 of W)
+  deactivate B
+else
+  A -> C : Replicate(k, version)
+  activate C
+  C -> C : verify CRC, append + fsync
+  C --> A : ACK (arrives after W, ignored)
+  deactivate C
+end
+
+A --> R : OK(version)
+deactivate A
+R --> Client : OK
+
+== Failure paths ==
+
+alt fewer than W acks before coordinator timeout (500 ms)
+  A --> R : QUORUM_NOT_REACHED
+  R --> Client : ERROR(QUORUM_NOT_REACHED)
+  note right of A
+    The write may survive on < W nodes
+    (unacknowledged). Anti-entropy may
+    spread it later.
+  end note
+else coordinator crashes / times out before replying
+  R -> B : CoordPut(k, v, req_id)\n(retry once with next UP node in pref)
+  note right of R : same req_id lets a coordinator\ndrop a duplicate retry
+end
+@enduml

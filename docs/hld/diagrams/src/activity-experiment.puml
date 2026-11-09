@@ -1,0 +1,42 @@
+@startuml activity-experiment
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Activity Diagram — Kill / restart experiment
+
+start
+:Preflight: NTP check, local-disk (not NFS) check,
+clean data directories, copy binaries;
+repeat
+  :Pick configuration
+  (load L, key count K, downtime D, cluster size);
+  :Start Metadata Service, Auto-Admin,
+  storage nodes, Request Router;
+  :Preload K keys;
+  fork
+    :loadgen runs the GET/PUT mix at rate L;
+    :log every request (start, end, outcome)
+    and every acknowledged version;
+  fork again
+    :wait 30 s (baseline window);
+    :kill -9 one storage node (log t_kill);
+    :keep load running for D seconds (down window);
+    :restart node (log t_start);
+    :wait for RepairReport(DONE) (repair window);
+    :wait 30 s (post-repair window);
+  end fork
+  :stop loadgen;
+  :Verify: read back every acknowledged key;
+  if (every key returns a version >= last acked?) then (yes)
+    :PASS: 0 lost acknowledged writes;
+  else (no)
+    :FAIL: record lost writes;
+  endif
+  :Collect logs from all machines (ssh);
+repeat while (more configurations?) is (yes)
+->no;
+:Compute metrics per window:
+availability, latency p50/p95/p99,
+detection time, repair time, repair volume;
+:Generate graphs and tables (Python);
+stop
+@enduml

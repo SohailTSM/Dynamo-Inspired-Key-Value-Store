@@ -1,0 +1,74 @@
+@startuml node-internals
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Component Diagram — Inside a Storage Node
+left to right direction
+
+component "Request Router" as Router
+component "Peer nodes\n(callers)" as PeersIn
+
+package "Storage Node process" {
+  package "API layer (gRPC)" {
+    component "CoordinatorService\n(CoordPut, CoordGet)" as CS
+    component "ReplicaService\n(Replicate, ReadLocal,\nHeartbeat, Merkle*,\nFetchVersions)" as RS
+  }
+
+  package "Logic" {
+    component "Coordinator" as Co
+    component "QuorumTracker\n(W / R acks, timeouts)" as QT
+    component "VersionResolver\n(vector clocks + rule)\n[P2: siblings]" as VR
+    component "FailureDetector\n(local UP/SUSPECT/DOWN)" as FD
+    component "AntiEntropy\n(startup + periodic)" as AE
+  }
+
+  package "StorageEngine" {
+    component "VersionLog\n(append, CRC32,\ngroup-commit fsync)" as VL
+    component "Index\n(key -> versions)" as IX
+    component "MerkleForest\n(tree per range)" as MF
+  }
+
+  package "Cluster view + networking" {
+    component "RingCache" as RC
+    component "AdminReporter" as AR
+    component "PeerClientPool" as PC
+    component "FaultInjector\n[tests + P2]" as FI
+  }
+}
+
+database "local disk\n(log segments)" as Disk
+component "Peer nodes\n(callees)" as PeersOut
+component "Auto-Admin" as Admin
+component "Metadata Service" as Meta
+
+Router --> CS
+PeersIn --> RS
+
+CS --> Co
+Co --> QT
+Co --> VR
+Co --> VL : append + fsync
+Co --> PC : Replicate / ReadLocal
+Co ..> RC : preference list
+Co ..> FD : skip DOWN peers
+
+RS --> VL : store version
+RS --> IX : ReadLocal
+RS --> MF : Merkle queries
+RS ..> FD : heartbeat in
+
+AE --> MF
+AE --> VL : store fetched
+AE --> PC : Merkle* / Fetch
+FD --> PC : heartbeats out
+FD ..> AR : suspects
+AE ..> AR : repair progress
+
+VL --> IX : apply after fsync
+IX --> MF : update hashes
+VL --> Disk
+
+PC --> FI
+FI --> PeersOut
+AR --> Admin
+RC --> Meta
+@enduml

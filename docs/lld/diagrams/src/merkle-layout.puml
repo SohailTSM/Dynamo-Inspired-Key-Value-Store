@@ -1,0 +1,58 @@
+@startuml merkle-layout
+!pragma layout smetana
+!include ../../../plantuml-style.iuml
+title Object Diagram — Merkle tree for one ring range (fan-out 16, 256 leaves)
+
+object "root : node 0" as root {
+  hash = SHA1(child1 .. child16)
+}
+object "inner : node 1" as i1 {
+  hash = SHA1(leaf17 .. leaf32)
+}
+object "inner : node 2" as i2 {
+  hash = SHA1(leaf33 .. leaf48)
+}
+object "inner : node 16" as i16 {
+  hash = SHA1(leaf257 .. leaf272)
+}
+object "leaf : node 17 (bucket 0)" as l17 {
+  keys with SHA1(key)[0] = 0
+  hash = SHA1(key || 0x00 || digests ...)
+}
+object "leaf : node 18 (bucket 1)" as l18 {
+  keys with SHA1(key)[0] = 1
+}
+object "leaf : node 272 (bucket 255)" as l272 {
+  keys with SHA1(key)[0] = 255
+}
+object "entry" as e1 {
+  key = "user:42"
+  digests = [d(v7)]
+}
+object "entry" as e2 {
+  key = "user:97"
+  digests = [d(v3), d(v4)]  (concurrent siblings)
+}
+
+root *-- i1
+root *-- i2
+root *-- i16
+i1 *-- l17
+i1 *-- l18
+i16 *-- l272
+l17 *-- e1
+l17 *-- e2
+
+note right of i2
+  heap numbering:
+  children of node i (i = 0) are 1..16;
+  children of inner node i (1..16) are
+  17 + 16*(i-1) .. 16 + 16*i
+end note
+
+note bottom of e2
+  digest = SHA1(canonical clock || timestamp || coordinator || SHA1(value)),
+  computed once by the coordinator, identical on every replica.
+  A write marks its leaf and ancestors dirty; hashes are recomputed lazily.
+end note
+@enduml

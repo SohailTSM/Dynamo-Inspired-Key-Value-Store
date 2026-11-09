@@ -1,0 +1,16 @@
+# Patterns starting with "/" match only at the repo root (a bare "tools/" also matched src/tools/).
+
+# Downloaded tools (e.g. the PlantUML jar), fetched by docs/build_diagrams.sh
+/tools/
+# C++ build output, local cluster runs (build/local-run/)
+/build/
+# Unit-test scratch dirs (default $DKV_TEST_TMPDIR)
+/test-tmp/
+# Python bytecode from scripts/analysis
+__pycache__/
+*.pyc
+# Credentials: never commit. Only the example template is tracked.
+/secrets/*
+!/secrets/rce.example.json
+# Reference material kept locally (third-party video transcript)
+/Transcript.txt
