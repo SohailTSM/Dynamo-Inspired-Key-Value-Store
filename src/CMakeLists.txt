@@ -24,3 +24,18 @@ target_link_libraries(dkv_storage PUBLIC dkv_version)
 add_library(dkv_merkle STATIC merkle/merkle_tree.cc)
 dkv_target_defaults(dkv_merkle)
 target_link_libraries(dkv_merkle PUBLIC dkv_storage dkv_ring)
+
+add_library(dkv_rpc STATIC rpc/rpc_util.cc rpc/fault_injector.cc rpc/peer_client_pool.cc rpc/ring_cache.cc
+  common/signals.cc)
+dkv_target_defaults(dkv_rpc)
+target_link_libraries(dkv_rpc PUBLIC dkv_ring dkv_common)
+
+add_library(dkv_nodelib STATIC
+  node/failure_detector.cc node/coordinator.cc node/admin_reporter.cc node/services.cc
+  node/anti_entropy.cc node/storage_node.cc)
+dkv_target_defaults(dkv_nodelib)
+target_link_libraries(dkv_nodelib PUBLIC dkv_rpc dkv_merkle dkv_storage)
+
+add_executable(dkv_node node/main.cc)
+dkv_target_defaults(dkv_node)
+target_link_libraries(dkv_node PRIVATE dkv_nodelib)
