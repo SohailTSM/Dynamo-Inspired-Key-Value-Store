@@ -1,0 +1,4 @@
+{"t_wall_ms":1794175974843,"proc":"driver","event":"driver.kill","node":"D"}
+{"t_wall_ms":1794175974948,"proc":"driver","event":"driver.kill","node":"C"}
+{"t_wall_ms":1794176005059,"proc":"driver","event":"driver.start","node":"D"}
+{"t_wall_ms":1794176005089,"proc":"driver","event":"driver.start","node":"C"}

@@ -1,0 +1,98 @@
+{
+  "run": "run-k50000-r1000-1",
+  "experiment": {
+    "keys": 50000,
+    "rate": 1000,
+    "threads": 16,
+    "base_s": 20,
+    "down_s": 30,
+    "post_s": 20,
+    "victim": "D",
+    "victims": "D",
+    "value_bytes": 256,
+    "put_ratio": 0.5,
+    "hosts": "node03 node04 node05 node06 "
+  },
+  "victim": "D",
+  "downtime_s": 30.109,
+  "detection_ms_kill_to_down": 2770,
+  "detection_ms_last_heartbeat_to_down": 3081,
+  "repair": {
+    "process_start_wall_ms": 1794175866649,
+    "repair_start_wall_ms": 1794175867495,
+    "done_wall_ms": 1794175869284,
+    "repair_ms_from_start": 2635,
+    "repair_ms_pass": 1789,
+    "keys_fetched": 10051,
+    "bytes_fetched": 3035222
+  },
+  "windows": {
+    "before": {
+      "requests": 50032,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 8.096,
+      "latency_ms_p95": 11.181,
+      "latency_ms_p99": 12.443,
+      "codes": {
+        "OK": 50032
+      }
+    },
+    "down": {
+      "requests": 30103,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 8.236,
+      "latency_ms_p95": 11.287,
+      "latency_ms_p99": 12.363,
+      "codes": {
+        "OK": 30103
+      }
+    },
+    "repair": {
+      "requests": 2662,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 8.593,
+      "latency_ms_p95": 12.089,
+      "latency_ms_p99": 13.881,
+      "codes": {
+        "OK": 2662
+      }
+    },
+    "after": {
+      "requests": 20844,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 8.042,
+      "latency_ms_p95": 11.182,
+      "latency_ms_p99": 12.501,
+      "codes": {
+        "OK": 20844
+      }
+    }
+  },
+  "overall": {
+    "requests": 103641,
+    "availability_pct": 100.0,
+    "put_availability_pct": 100.0,
+    "get_availability_pct": 100.0,
+    "latency_ms_p50": 8.131,
+    "latency_ms_p95": 11.248,
+    "latency_ms_p99": 12.485,
+    "codes": {
+      "OK": 103641
+    }
+  },
+  "verify": {
+    "acked_keys": 50000,
+    "ok": 50000,
+    "ok_later_maybe": 0,
+    "lost": 0,
+    "errors": 0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "control": "node03",
+  "router": {
+    "R1": "node04"
+  },
+  "loadgen": "node05",
+  "storage": {
+    "A": "node03",
+    "B": "node04",
+    "C": "node05",
+    "D": "node06"
+  }
+}

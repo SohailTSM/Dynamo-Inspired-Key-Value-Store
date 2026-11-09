@@ -1,0 +1,9 @@
+victim D: down 30.216 s; detection 3179 ms after kill (3085 ms after last heartbeat)
+repair: 1648 ms from process start (120 ms anti-entropy pass), 227 keys, 68541 bytes
+window    requests   avail%     put%     get%   p50ms   p95ms   p99ms
+before        9040   100.00   100.00   100.00    6.68    9.20   10.38
+down          6038    46.44    46.43    46.45    6.30    8.64    9.54
+repair         330    85.45    83.66    87.01    6.72   10.11   11.30
+after         4144   100.00   100.00   100.00    6.59    9.06   10.21
+verify: 1000 acked keys, lost = 0, errors = 0
+charts: /home/cs3401.41/dkv-results/119958/run-twodown-k1000/availability.svg, /home/cs3401.41/dkv-results/119958/run-twodown-k1000/latency_p99.svg

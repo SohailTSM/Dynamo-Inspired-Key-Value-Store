@@ -1,0 +1,101 @@
+{
+  "run": "run-twodown-k1000",
+  "experiment": {
+    "keys": 1000,
+    "rate": 200,
+    "threads": 16,
+    "base_s": 20,
+    "down_s": 30,
+    "post_s": 20,
+    "victim": "D",
+    "victims": "D C",
+    "value_bytes": 256,
+    "put_ratio": 0.5,
+    "hosts": "node03 node04 node05 node06 "
+  },
+  "victim": "D",
+  "downtime_s": 30.216,
+  "detection_ms_kill_to_down": 3179,
+  "detection_ms_last_heartbeat_to_down": 3085,
+  "repair": {
+    "process_start_wall_ms": 1794176005079,
+    "repair_start_wall_ms": 1794176006607,
+    "done_wall_ms": 1794176006727,
+    "repair_ms_from_start": 1648,
+    "repair_ms_pass": 120,
+    "keys_fetched": 227,
+    "bytes_fetched": 68541
+  },
+  "windows": {
+    "before": {
+      "requests": 9040,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 6.677,
+      "latency_ms_p95": 9.204,
+      "latency_ms_p99": 10.383,
+      "codes": {
+        "OK": 9040
+      }
+    },
+    "down": {
+      "requests": 6038,
+      "availability_pct": 46.439,
+      "put_availability_pct": 46.426,
+      "get_availability_pct": 46.452,
+      "latency_ms_p50": 6.302,
+      "latency_ms_p95": 8.637,
+      "latency_ms_p99": 9.542,
+      "codes": {
+        "OK": 2804,
+        "QUORUM_NOT_REACHED": 3234
+      }
+    },
+    "repair": {
+      "requests": 330,
+      "availability_pct": 85.455,
+      "put_availability_pct": 83.66,
+      "get_availability_pct": 87.006,
+      "latency_ms_p50": 6.719,
+      "latency_ms_p95": 10.108,
+      "latency_ms_p99": 11.301,
+      "codes": {
+        "QUORUM_NOT_REACHED": 48,
+        "OK": 282
+      }
+    },
+    "after": {
+      "requests": 4144,
+      "availability_pct": 100.0,
+      "put_availability_pct": 100.0,
+      "get_availability_pct": 100.0,
+      "latency_ms_p50": 6.587,
+      "latency_ms_p95": 9.058,
+      "latency_ms_p99": 10.213,
+      "codes": {
+        "OK": 4144
+      }
+    }
+  },
+  "overall": {
+    "requests": 19552,
+    "availability_pct": 83.214,
+    "put_availability_pct": 83.203,
+    "get_availability_pct": 83.225,
+    "latency_ms_p50": 6.59,
+    "latency_ms_p95": 9.092,
+    "latency_ms_p99": 10.256,
+    "codes": {
+      "OK": 16270,
+      "QUORUM_NOT_REACHED": 3282
+    }
+  },
+  "verify": {
+    "acked_keys": 1000,
+    "ok": 1000,
+    "ok_later_maybe": 0,
+    "lost": 0,
+    "errors": 0
+  }
+}

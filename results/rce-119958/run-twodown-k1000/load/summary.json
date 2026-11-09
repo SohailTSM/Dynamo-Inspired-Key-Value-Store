@@ -1,0 +1,1 @@
+{"start_wall_ms":1794175929692,"end_wall_ms":1794176027390,"ops":19552,"ok":16270,"puts":9698,"put_ok":8069,"gets":9854,"get_ok":8201,"not_found":0,"codes":{"OK":16270,"NOT_FOUND":0,"QUORUM_NOT_REACHED":3282,"INVALID_ARGUMENT":0,"UNAVAILABLE":0,"TIMEOUT":0,"NOT_A_REPLICA":0,"INTERNAL":0},"rate":200.000000,"threads":16,"keys":1000,"put_ratio":0.500000,"value_bytes":256}

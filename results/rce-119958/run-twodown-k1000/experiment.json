@@ -1,0 +1,1 @@
+{"keys":1000,"rate":200,"threads":16,"base_s":20,"down_s":30,"post_s":20,"victim":"D","victims":"D C","value_bytes":256,"put_ratio":0.5,"hosts":"node03 node04 node05 node06 "}

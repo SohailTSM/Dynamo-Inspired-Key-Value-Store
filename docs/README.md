@@ -14,3 +14,5 @@ Rebuild every diagram with:
 ```bash
 docs/build_diagrams.sh   # needs only Java; downloads the pinned PlantUML jar into tools/ on first run
 ```
+
+Related: experiment results are in [../results/](../results/README.md); decisions and progress are in [../PROJECT_LOG.md](../PROJECT_LOG.md).

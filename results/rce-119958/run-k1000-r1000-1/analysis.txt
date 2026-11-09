@@ -1,0 +1,9 @@
+victim D: down 30.108 s; detection 2235 ms after kill (3086 ms after last heartbeat)
+repair: 946 ms from process start (317 ms anti-entropy pass), 692 keys, 209070 bytes
+window    requests   avail%     put%     get%   p50ms   p95ms   p99ms
+before       45075   100.00   100.00   100.00    7.56   10.57   11.90
+down         30109   100.00   100.00   100.00    7.64   10.63   11.78
+repair         976   100.00   100.00   100.00    7.89   10.87   11.83
+after        20287   100.00   100.00   100.00    7.52   10.51   11.80
+verify: 1000 acked keys, lost = 0, errors = 0
+charts: /home/cs3401.41/dkv-results/119958/run-k1000-r1000-1/availability.svg, /home/cs3401.41/dkv-results/119958/run-k1000-r1000-1/latency_p99.svg

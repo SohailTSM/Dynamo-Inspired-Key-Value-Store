@@ -1,0 +1,66 @@
+{
+  "clusterName": "dkv-rce",
+  "storageNodes": [
+    {
+      "id": "A",
+      "host": "node03",
+      "port": 17001
+    },
+    {
+      "id": "B",
+      "host": "node04",
+      "port": 17002
+    },
+    {
+      "id": "C",
+      "host": "node05",
+      "port": 17003
+    },
+    {
+      "id": "D",
+      "host": "node06",
+      "port": 17004
+    }
+  ],
+  "routers": [
+    {
+      "id": "R1",
+      "host": "node04",
+      "port": 17100
+    }
+  ],
+  "metadata": {
+    "id": "M",
+    "host": "node03",
+    "port": 17200
+  },
+  "admin": {
+    "id": "ADM",
+    "host": "node03",
+    "port": 17300
+  },
+  "quorum": {
+    "n": 3,
+    "r": 2,
+    "w": 2
+  },
+  "vnodesPerNode": 64,
+  "timing": {
+    "heartbeatIntervalMs": 1000,
+    "suspectAfterMissed": 1,
+    "downAfterMissed": 3,
+    "detectorTickMs": 100,
+    "coordTimeoutMs": 500,
+    "routerTimeoutMs": 1000,
+    "antiEntropyIntervalS": 30,
+    "ringPollIntervalS": 5
+  },
+  "storage": {
+    "dataDir": "/tmp/cs3401.41/dkv-119958/${DKV_RUN_TAG}",
+    "segmentBytes": 67108864
+  },
+  "policy": {
+    "resolution": "LWW_ON_CONCURRENT",
+    "stamping": "READ_BEFORE_WRITE"
+  }
+}

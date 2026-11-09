@@ -840,3 +840,19 @@ Loadgen's per-request CSV is the source for availability and latency (HLD §11).
 | `FaultInjector` | `PeerClientPool`, `ReplicaServiceImpl` | also apply in the router for client-side partitions; add a `dkv_cli partition A,B | C,D` helper |
 | Stale-read measurement | `RequestLog.version_digest` | compare with the latest acknowledged digest per key in analysis |
 | Hinted handoff (optional) | `Coordinator` fan-out targets are a list, not hard-coded to pref | add a fallback node + hint store |
+
+## 16. Implementation notes (deviations found while building, 2026-11-09)
+
+| Area | LLD said | Implemented | Why |
+|---|---|---|---|
+| Proto package | `dkv` | **`dkv.wire`** (C++ `dkv::wire::…`) | Avoids clashing with our own `dkv::` classes, and with the global `::pb` namespace that protobuf 31 (RCE) declares |
+| Unit test framework | vendored doctest | tiny in-repo harness `tests/test_framework.h` (same `TEST_CASE` / `CHECK` / `REQUIRE` style) | No external code to download; works offline on RCE |
+| READ_BEFORE_WRITE (§7.1) | remote clock read under the key lock | remote read **before** taking the lock, then local clocks merged under the lock | Equally correct (the local merge sees any concurrent local write), and keeps the §9 rule that no lock is held across a network call |
+| PUT with < W live replicas | — | fails with QUORUM_NOT_REACHED **before** the local write | Avoids creating writes that can never be acknowledged |
+| Read repair (§7.2) | late replies also trigger repair | only replies received before the quorum wait returns | Simpler; the periodic anti-entropy covers the rest |
+| Extra proto fields | — | `HeartbeatAck.seen_sender_incarnation`, `from` on peer requests, `NodeStatus.address`, `RepairReport.repair_start_wall_ms` | Needed for "peers have seen my new incarnation" (§7.6), the incoming fault filter, and repair timing |
+| Admin RECOVERING (§7.5) | entered on Register | entered on Register, a heartbeat with a new incarnation, or RepairReport STARTED; left on RepairReport DONE | Robust to message ordering and admin restarts |
+| Shutdown | not specified | `main` blocks on SIGTERM and runs stop itself; order: traffic sources → server drain (500 ms) → fan-out pool → log | Fixes a destroy-while-stopping race found on RCE |
+| Index (§5.3) | — | `apply()` is order-independent (maximal versions + declared tie rule for equal clocks); the change callback runs under the shard lock | Replicas receiving the same versions in any order converge, so Merkle roots match |
+| Build on RCE | `module load gRPC` | also `module load cmake/3.20.3`; libsystemd link fix in `cmake/Dependencies.cmake` | Compute nodes have no system cmake, and some lack the `libsystemd.so` dev symlink |
+| Charts | matplotlib | pure-Python SVG in `analyze_run.py` | matplotlib is not installed on RCE or locally |
