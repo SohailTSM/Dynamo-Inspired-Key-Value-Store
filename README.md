@@ -16,6 +16,7 @@ Phase 1 (course Project 1, `Proposal.pdf`) is implemented. Phase 2 (configurable
 ## Build
 
 Local (Ubuntu):
+
 ```bash
 sudo apt install cmake libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc   # once
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -24,10 +25,12 @@ cmake --build build -j
 ```
 
 RCE (builds on a compute node through SLURM; nothing runs on the login node):
+
 ```bash
 scripts/rce/sync.sh                                             # copy sources to ~/dynamo-kv/src
 scripts/rce/ssh.sh 'sbatch --wait' < scripts/rce/build.sbatch   # module load cmake/3.20.3 gRPC/1.74.1, build, unit tests
 ```
+
 `scripts/rce/ssh.sh` reads the login and password from the gitignored `secrets/rce.json` (template: `secrets/rce.example.json`).
 
 ## Run a local cluster (4 storage nodes + router + metadata + auto-admin on 127.0.0.1)
@@ -45,14 +48,19 @@ scripts/local/cluster.sh stop
 ## Kill/restart experiment
 
 Local:
+
 ```bash
 KEYS=2000 RATE=300 BASE_S=10 DOWN_S=15 POST_S=10 VICTIM=B scripts/local/experiment.sh
 ```
+
 RCE (4-8 compute nodes; one SLURM job runs the whole sweep):
+
 ```bash
 scripts/rce/ssh.sh 'sbatch --export=ALL,KEYS_LIST="1000 10000",RATES_LIST="200 1000",TWO_DOWN=1' < scripts/rce/experiment.sbatch
 ```
+
 Every run produces `results.json`, `analysis.txt`, `availability.svg` and `latency_p99.svg`. The job also writes `summary.md` / `summary.csv` covering all runs. Metrics:
+
 - **request availability** per window (before / down / repair / after)
 - p50/p95/p99 latency
 - **failure detection time** (kill → admin DOWN, same clock)
@@ -61,11 +69,11 @@ Every run produces `results.json`, `analysis.txt`, `availability.svg` and `laten
 
 ## Processes
 
-| Binary | Role |
-|---|---|
-| `dkv_node --id A` | storage node: version log + index + Merkle trees, coordinator (quorums), heartbeats, anti-entropy |
-| `dkv_router --id R1` | request router: cached ring + health view, forwards to the first live replica, fails over |
-| `dkv_metadata` | ring / membership source of truth |
-| `dkv_admin` | Auto-Admin: cluster health (peer-confirmed DOWN), repair tracking, CSV + event logs |
-| `dkv_cli` | put / get / status / fault injection |
-| `dkv_loadgen`, `dkv_verify` | workload generator with ack log; acknowledged-write verifier |
+| Binary                      | Role                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
+| `dkv_node --id A`           | storage node: version log + index + Merkle trees, coordinator (quorums), heartbeats, anti-entropy |
+| `dkv_router --id R1`        | request router: cached ring + health view, forwards to the first live replica, fails over         |
+| `dkv_metadata`              | ring / membership source of truth                                                                 |
+| `dkv_admin`                 | Auto-Admin: cluster health (peer-confirmed DOWN), repair tracking, CSV + event logs               |
+| `dkv_cli`                   | put / get / status / fault injection                                                              |
+| `dkv_loadgen`, `dkv_verify` | workload generator with ack log; acknowledged-write verifier                                      |
